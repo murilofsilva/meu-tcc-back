@@ -38,6 +38,10 @@ data class RegisterRequest(
     val perfil: PerfilUsuario
 )
 
+/**
+ * DTO compartilhado para representar um usuário
+ * Usado em diversos contextos (auth, professor, etc)
+ */
 data class UsuarioDTO(
     val id: Long,
     val nome: String,

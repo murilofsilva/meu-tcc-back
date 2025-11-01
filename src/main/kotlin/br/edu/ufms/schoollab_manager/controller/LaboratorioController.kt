@@ -1,20 +1,24 @@
 package br.edu.ufms.schoollab_manager.controller
 
-import br.edu.ufms.schoollab_manager.domain.entity.Laboratorio
 import br.edu.ufms.schoollab_manager.dto.CreateLaboratorioRequest
 import br.edu.ufms.schoollab_manager.dto.LaboratorioDTO
 import br.edu.ufms.schoollab_manager.dto.UpdateLaboratorioRequest
-import br.edu.ufms.schoollab_manager.repository.LaboratorioRepository
+import br.edu.ufms.schoollab_manager.exception.ValidationException
+import br.edu.ufms.schoollab_manager.service.LaboratorioService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
+/**
+ * Controller responsável por receber e devolver requisições relacionadas a laboratórios.
+ * Toda a lógica de negócio é delegada ao LaboratorioService.
+ */
 @RestController
 @RequestMapping("/api/laboratorios")
 class LaboratorioController(
-    private val laboratorioRepository: LaboratorioRepository
+    private val laboratorioService: LaboratorioService
 ) {
 
     /**
@@ -23,24 +27,9 @@ class LaboratorioController(
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
-    fun cadastrarLaboratorio(@Valid @RequestBody request: CreateLaboratorioRequest): ResponseEntity<Any> {
-        if (laboratorioRepository.existsByNome(request.nome)) {
-            return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(mapOf("mensagem" to "Já existe um laboratório com este nome"))
-        }
-
-        val laboratorio = Laboratorio(
-            nome = request.nome,
-            capacidade = request.capacidade,
-            qtdEquipamentos = request.qtdEquipamentos
-        )
-
-        val laboratorioSalvo = laboratorioRepository.save(laboratorio)
-
-        return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(LaboratorioDTO.fromEntity(laboratorioSalvo))
+    fun cadastrarLaboratorio(@Valid @RequestBody request: CreateLaboratorioRequest): ResponseEntity<LaboratorioDTO> {
+        val laboratorioDTO = laboratorioService.cadastrarLaboratorio(request)
+        return ResponseEntity.status(HttpStatus.CREATED).body(laboratorioDTO)
     }
 
     /**
@@ -49,15 +38,8 @@ class LaboratorioController(
      */
     @GetMapping
     fun listarLaboratorios(@RequestParam(required = false) status: Boolean?): ResponseEntity<List<LaboratorioDTO>> {
-        val laboratorios = if (status != null) {
-            laboratorioRepository.findByStatusOrderByNomeAsc(status)
-        } else {
-            laboratorioRepository.findAllByOrderByNomeAsc()
-        }
-
-        val laboratoriosDTO = laboratorios.map { LaboratorioDTO.fromEntity(it) }
-
-        return ResponseEntity.ok(laboratoriosDTO)
+        val laboratorios = laboratorioService.listarLaboratorios(status)
+        return ResponseEntity.ok(laboratorios)
     }
 
     /**
@@ -65,14 +47,9 @@ class LaboratorioController(
      * Todos os usuários autenticados podem visualizar
      */
     @GetMapping("/{id}")
-    fun buscarLaboratorio(@PathVariable id: Long): ResponseEntity<Any> {
-        val laboratorio = laboratorioRepository.findById(id)
-            .orElse(null)
-            ?: return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(mapOf("mensagem" to "Laboratório não encontrado"))
-
-        return ResponseEntity.ok(LaboratorioDTO.fromEntity(laboratorio))
+    fun buscarLaboratorio(@PathVariable id: Long): ResponseEntity<LaboratorioDTO> {
+        val laboratorioDTO = laboratorioService.buscarLaboratorio(id)
+        return ResponseEntity.ok(laboratorioDTO)
     }
 
     /**
@@ -84,29 +61,9 @@ class LaboratorioController(
     fun atualizarLaboratorio(
         @PathVariable id: Long,
         @Valid @RequestBody request: UpdateLaboratorioRequest
-    ): ResponseEntity<Any> {
-        val laboratorio = laboratorioRepository.findById(id)
-            .orElse(null)
-            ?: return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(mapOf("mensagem" to "Laboratório não encontrado"))
-
-        // Verifica se o novo nome já existe em outro laboratório
-        if (request.nome != null && request.nome != laboratorio.nome) {
-            if (laboratorioRepository.existsByNome(request.nome)) {
-                return ResponseEntity
-                    .status(HttpStatus.CONFLICT)
-                    .body(mapOf("mensagem" to "Já existe um laboratório com este nome"))
-            }
-            laboratorio.nome = request.nome
-        }
-
-        request.capacidade?.let { laboratorio.capacidade = it }
-        request.qtdEquipamentos?.let { laboratorio.qtdEquipamentos = it }
-
-        val laboratorioAtualizado = laboratorioRepository.save(laboratorio)
-
-        return ResponseEntity.ok(LaboratorioDTO.fromEntity(laboratorioAtualizado))
+    ): ResponseEntity<LaboratorioDTO> {
+        val laboratorioDTO = laboratorioService.atualizarLaboratorio(id, request)
+        return ResponseEntity.ok(laboratorioDTO)
     }
 
     /**
@@ -118,22 +75,12 @@ class LaboratorioController(
     fun alterarStatus(
         @PathVariable id: Long,
         @RequestBody body: Map<String, Boolean>
-    ): ResponseEntity<Any> {
-        val laboratorio = laboratorioRepository.findById(id)
-            .orElse(null)
-            ?: return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(mapOf("mensagem" to "Laboratório não encontrado"))
-
+    ): ResponseEntity<LaboratorioDTO> {
         val novoStatus = body["status"]
-            ?: return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(mapOf("mensagem" to "Campo 'status' é obrigatório"))
+            ?: throw ValidationException("Campo 'status' é obrigatório")
 
-        laboratorio.status = novoStatus
-        val laboratorioAtualizado = laboratorioRepository.save(laboratorio)
-
-        return ResponseEntity.ok(LaboratorioDTO.fromEntity(laboratorioAtualizado))
+        val laboratorioDTO = laboratorioService.alterarStatus(id, novoStatus)
+        return ResponseEntity.ok(laboratorioDTO)
     }
 
     /**
@@ -142,22 +89,8 @@ class LaboratorioController(
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
-    fun deletarLaboratorio(@PathVariable id: Long): ResponseEntity<Any> {
-        val laboratorio = laboratorioRepository.findById(id)
-            .orElse(null)
-            ?: return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(mapOf("mensagem" to "Laboratório não encontrado"))
-
-        try {
-            laboratorioRepository.delete(laboratorio)
-            return ResponseEntity
-                .status(HttpStatus.NO_CONTENT)
-                .build()
-        } catch (e: Exception) {
-            return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(mapOf("mensagem" to "Não é possível deletar este laboratório pois existem reservas vinculadas a ele"))
-        }
+    fun deletarLaboratorio(@PathVariable id: Long): ResponseEntity<Void> {
+        laboratorioService.deletarLaboratorio(id)
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
 }

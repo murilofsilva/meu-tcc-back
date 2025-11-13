@@ -5,6 +5,7 @@ import br.edu.ufms.schoollab_manager.dto.AlterarStatusReservaRequest
 import br.edu.ufms.schoollab_manager.dto.CreateReservaRequest
 import br.edu.ufms.schoollab_manager.dto.ReservaDTO
 import br.edu.ufms.schoollab_manager.dto.UpdateReservaRequest
+import br.edu.ufms.schoollab_manager.exception.ValidationException
 import br.edu.ufms.schoollab_manager.service.ReservaService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -133,5 +134,35 @@ class ReservaController(
     ): ResponseEntity<Void> {
         reservaService.cancelarReserva(id, authentication.name)
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+    }
+
+    /**
+     * Lista reservas futuras do professor autenticado
+     * Usado para vincular planejamentos
+     */
+    @GetMapping("/futuras")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    fun listarReservasFuturas(
+        authentication: Authentication
+    ): ResponseEntity<List<ReservaDTO>> {
+        val reservas = reservaService.listarReservasFuturas(authentication.name)
+        return ResponseEntity.ok(reservas)
+    }
+
+    /**
+     * Vincula ou substitui um planejamento em uma reserva existente
+     * Apenas o professor que criou a reserva pode vincular
+     */
+    @PatchMapping("/{id}/planejamento")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    fun vincularPlanejamento(
+        @PathVariable id: Long,
+        @RequestBody body: Map<String, Long>,
+        authentication: Authentication
+    ): ResponseEntity<ReservaDTO> {
+        val planejamentoId = body["planejamentoId"]
+            ?: throw ValidationException("planejamentoId é obrigatório")
+        val reservaDTO = reservaService.vincularPlanejamento(id, planejamentoId, authentication.name)
+        return ResponseEntity.ok(reservaDTO)
     }
 }

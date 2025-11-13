@@ -287,4 +287,47 @@ class ReservaService(
         reserva.status = StatusReserva.CANCELADO
         reservaRepository.save(reserva)
     }
+
+    /**
+     * Lista reservas futuras do professor autenticado
+     * Usado para vincular planejamentos
+     */
+    fun listarReservasFuturas(emailProfessor: String): List<ReservaDTO> {
+        val professor = usuarioRepository.findByEmail(emailProfessor)
+            .orElseThrow { ResourceNotFoundException("Usuário não encontrado") }
+
+        val agora = Instant.now()
+
+        // Busca todas as reservas do professor e filtra as futuras
+        val reservas = reservaRepository.findByProfessorIdOrderByCriadoEmDesc(professor.id!!)
+            .filter { it.inicio.isAfter(agora) }
+
+        return reservas.map { ReservaDTO.fromEntity(it) }
+    }
+
+    /**
+     * Vincula ou substitui um planejamento em uma reserva existente
+     */
+    fun vincularPlanejamento(id: Long, planejamentoId: Long, emailProfessor: String): ReservaDTO {
+        val reserva = reservaRepository.findById(id)
+            .orElseThrow { ResourceNotFoundException("Reserva não encontrada") }
+
+        val professor = usuarioRepository.findByEmail(emailProfessor)
+            .orElseThrow { ResourceNotFoundException("Usuário não encontrado") }
+
+        // Verifica se é o professor que criou a reserva
+        if (reserva.professor.id != professor.id) {
+            throw ForbiddenException("Você não tem permissão para modificar esta reserva")
+        }
+
+        // Busca o planejamento
+        val planejamento = planejamentoRepository.findById(planejamentoId)
+            .orElseThrow { ResourceNotFoundException("Planejamento não encontrado") }
+
+        // Vincula o planejamento (substitui se já existir)
+        reserva.planejamento = planejamento
+
+        val reservaAtualizada = reservaRepository.save(reserva)
+        return ReservaDTO.fromEntity(reservaAtualizada)
+    }
 }

@@ -162,4 +162,40 @@ class PlanejamentoController(
         planejamentoService.deletarPlanejamento(id, authentication.name)
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
+
+    /**
+     * Aprova um planejamento (atalho para alterar status para PUBLICADO)
+     * PATCH /api/planejamentos/{id}/aprovar
+     * Permissão: DIRETOR, ADMIN
+     */
+    @PatchMapping("/{id}/aprovar")
+    @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
+    fun aprovarPlanejamento(@PathVariable id: Long): ResponseEntity<PlanejamentoDTO> {
+        val request = AlterarStatusPlanejamentoRequest(
+            status = StatusPlanejamento.PUBLICADO,
+            motivo = null
+        )
+        val planejamentoDTO = planejamentoService.alterarStatus(id, request)
+        return ResponseEntity.ok(planejamentoDTO)
+    }
+
+    /**
+     * Reprova um planejamento com motivo opcional
+     * PATCH /api/planejamentos/{id}/reprovar
+     * Permissão: DIRETOR, ADMIN
+     */
+    @PatchMapping("/{id}/reprovar")
+    @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
+    fun reprovarPlanejamento(
+        @PathVariable id: Long,
+        @RequestBody(required = false) body: Map<String, String>?
+    ): ResponseEntity<PlanejamentoDTO> {
+        val motivo = body?.get("motivo") ?: "Planejamento não atende aos requisitos necessários."
+        val request = AlterarStatusPlanejamentoRequest(
+            status = StatusPlanejamento.REPROVADO,
+            motivo = motivo
+        )
+        val planejamentoDTO = planejamentoService.alterarStatus(id, request)
+        return ResponseEntity.ok(planejamentoDTO)
+    }
 }

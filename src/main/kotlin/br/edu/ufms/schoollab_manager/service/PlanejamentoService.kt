@@ -259,10 +259,6 @@ class PlanejamentoService(
             throw ValidationException("Planejamentos reprovados não podem ter o status alterado")
         }
 
-        if (request.status == StatusPlanejamento.REPROVADO && request.motivo.isNullOrBlank()) {
-            throw ValidationException("Motivo é obrigatório ao reprovar um planejamento")
-        }
-
         if (request.status == StatusPlanejamento.AGUARDANDO_AJUSTES && request.motivo.isNullOrBlank()) {
             throw ValidationException("Motivo é obrigatório ao solicitar ajustes")
         }

@@ -39,7 +39,8 @@ class PlanejamentoService(
             area = request.area,
             descricao = request.descricao,
             status = StatusPlanejamento.PENDENTE,
-            versao = 1
+            versao = 1,
+            publico = request.publico
         )
 
         val planejamentoSalvo = planejamentoRepository.save(planejamento)
@@ -48,32 +49,33 @@ class PlanejamentoService(
 
     /**
      * Lista planejamentos baseado no perfil do usuário:
-     * - Professor: Planos PUBLICADOS de todos + TODOS os seus próprios planos
-     * - Diretor/Admin: Todos os planos
+     * - Professor: Planos PUBLICADOS e PÚBLICOS de todos + TODOS os seus próprios planos
+     * - Diretor/Admin: Todos os planos (públicos e privados)
      */
     fun listarPlanejamentos(emailUsuario: String, status: StatusPlanejamento?): List<PlanejamentoDTO> {
         val usuario = usuarioRepository.findByEmail(emailUsuario)
             .orElseThrow { ResourceNotFoundException("Usuário não encontrado") }
 
         val planejamentos = when {
-            // Professor: planos públicos + meus planos
+            // Professor: planos públicos publicados + meus planos
             usuario.perfil == PerfilUsuario.PROFESSOR -> {
                 if (status != null) {
                     // Com filtro de status
                     val planosComStatus = planejamentoRepository.findByStatus(status)
                     val meusPlanos = planejamentoRepository.findByAuthorId(usuario.id!!)
 
-                    // Combina: planos públicos com o status OU meus planos com o status
-                    (planosComStatus.filter { it.status == StatusPlanejamento.PUBLICADO } +
+                    // Combina: planos públicos publicados com o status OU meus planos com o status
+                    (planosComStatus.filter { it.status == StatusPlanejamento.PUBLICADO && it.publico } +
                      meusPlanos.filter { it.status == status }).distinctBy { it.id }
                 } else {
-                    // Sem filtro: todos públicos + todos meus
+                    // Sem filtro: apenas planos PÚBLICOS e PUBLICADOS + todos meus
                     val planosPublicos = planejamentoRepository.findByStatus(StatusPlanejamento.PUBLICADO)
+                        .filter { it.publico }
                     val meusPlanos = planejamentoRepository.findByAuthorId(usuario.id!!)
                     (planosPublicos + meusPlanos).distinctBy { it.id }
                 }
             }
-            // Diretor/Admin: todos os planos
+            // Diretor/Admin: todos os planos (públicos e privados)
             else -> {
                 if (status != null) {
                     planejamentoRepository.findByStatus(status)
@@ -119,6 +121,7 @@ class PlanejamentoService(
         var planejamentos = when {
             usuario.perfil == PerfilUsuario.PROFESSOR -> {
                 val planosPublicos = planejamentoRepository.findByStatus(StatusPlanejamento.PUBLICADO)
+                    .filter { it.publico }
                 val meusPlanos = planejamentoRepository.findByAuthorId(usuario.id!!)
                 (planosPublicos + meusPlanos).distinctBy { it.id }
             }
@@ -201,14 +204,19 @@ class PlanejamentoService(
             throw ValidationException("Planejamentos reprovados não podem ser atualizados. Crie um novo planejamento.")
         }
 
+        // Verifica se mudou de privado para público
+        val mudouParaPublico = !planejamento.publico && request.publico
+
         // Atualiza os campos
         planejamento.titulo = request.titulo
         planejamento.area = request.area
         planejamento.descricao = request.descricao
+        planejamento.publico = request.publico
 
-        // Se estava publicado, volta para pendente e incrementa versão
+        // Se estava publicado OU mudou para público, volta para pendente e incrementa versão
         if (planejamento.status == StatusPlanejamento.PUBLICADO ||
-            planejamento.status == StatusPlanejamento.AGUARDANDO_AJUSTES) {
+            planejamento.status == StatusPlanejamento.AGUARDANDO_AJUSTES ||
+            mudouParaPublico) {
             planejamento.status = StatusPlanejamento.PENDENTE
             planejamento.versao += 1
         }

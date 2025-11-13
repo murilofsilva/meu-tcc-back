@@ -23,7 +23,9 @@ data class CreatePlanejamentoRequest(
 
     @field:NotBlank(message = "Descrição é obrigatória")
     @field:Size(min = 20, max = 2000, message = "Descrição deve ter entre 20 e 2000 caracteres")
-    val descricao: String
+    val descricao: String,
+
+    val publico: Boolean = false
 )
 
 /**
@@ -41,7 +43,9 @@ data class UpdatePlanejamentoRequest(
 
     @field:NotBlank(message = "Descrição é obrigatória")
     @field:Size(min = 20, max = 2000, message = "Descrição deve ter entre 20 e 2000 caracteres")
-    val descricao: String
+    val descricao: String,
+
+    val publico: Boolean = false
 )
 
 /**
@@ -69,6 +73,7 @@ data class PlanejamentoDTO(
     val descricao: String,
     val status: StatusPlanejamento,
     val versao: Int,
+    val publico: Boolean,
     val criadoEm: Instant
 ) {
     companion object {
@@ -85,6 +90,7 @@ data class PlanejamentoDTO(
                 descricao = planejamento.descricao,
                 status = planejamento.status,
                 versao = planejamento.versao,
+                publico = planejamento.publico,
                 criadoEm = planejamento.criadoEm
             )
         }

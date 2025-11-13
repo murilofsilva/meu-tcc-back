@@ -37,6 +37,9 @@ class Planejamento(
     @Column(nullable = false)
     var versao: Int = 1,
 
+    @Column(nullable = false)
+    var publico: Boolean = false,
+
     @Column(name = "criado_em", nullable = false, updatable = false)
     val criadoEm: Instant = Instant.now()
 ) {

@@ -38,3 +38,9 @@ out/
 
 ### Kotlin ###
 .kotlin
+
+### IntelliJ Gradle redirected build output ###
+gradle-builds/
+
+### Claude Code ###
+.claude/

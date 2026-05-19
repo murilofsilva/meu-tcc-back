@@ -13,8 +13,8 @@ class CorsConfig(
 
     @Bean
     fun corsConfigurationSource(): UrlBasedCorsConfigurationSource {
+        val origins = allowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
         val config = CorsConfiguration().apply {
-            val origins = allowedOrigins.split(",").map { it.trim() }.filter { it.isNotBlank() }
             if (origins.size == 1 && origins[0] == "*") {
                 addAllowedOriginPattern("*")
             } else {

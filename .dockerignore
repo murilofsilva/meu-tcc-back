@@ -1,0 +1,17 @@
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+.claude
+.gradle
+build
+out
+*.log
+docker-compose*.yml
+Dockerfile
+.dockerignore
+README.md
+HELP.md
+init-db.sql
+C:

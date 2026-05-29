@@ -15,14 +15,18 @@ class Laboratorio(
     @Column(nullable = false)
     var capacidade: Int,
 
+    // Coluna mantém o nome legado `qtd_equipamentos` para preservar dados existentes.
     @Column(name = "qtd_equipamentos", nullable = false)
-    var qtdEquipamentos: Int = 0,
+    var quantidadeComputadores: Int = 0,
+
+    @Column(columnDefinition = "TEXT")
+    var descricao: String? = null,
 
     @Column(nullable = false)
     var status: Boolean = true
 ) {
     init {
         require(capacidade >= 0) { "Capacidade deve ser maior ou igual a zero" }
-        require(qtdEquipamentos >= 0) { "Quantidade de equipamentos deve ser maior ou igual a zero" }
+        require(quantidadeComputadores >= 0) { "Quantidade de computadores deve ser maior ou igual a zero" }
     }
 }

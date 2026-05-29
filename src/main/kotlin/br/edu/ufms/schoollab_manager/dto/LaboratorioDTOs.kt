@@ -13,8 +13,11 @@ data class CreateLaboratorioRequest(
     @field:Min(value = 0, message = "Capacidade não pode ser negativa")
     val capacidade: Int,
 
-    @field:Min(value = 0, message = "Quantidade de equipamentos não pode ser negativa")
-    val qtdEquipamentos: Int = 0
+    @field:Min(value = 0, message = "Quantidade de computadores não pode ser negativa")
+    val quantidadeComputadores: Int = 0,
+
+    @field:Size(max = 2000, message = "Descrição deve ter no máximo 2000 caracteres")
+    val descricao: String? = null
 )
 
 data class UpdateLaboratorioRequest(
@@ -24,15 +27,19 @@ data class UpdateLaboratorioRequest(
     @field:Min(value = 0, message = "Capacidade não pode ser negativa")
     val capacidade: Int? = null,
 
-    @field:Min(value = 0, message = "Quantidade de equipamentos não pode ser negativa")
-    val qtdEquipamentos: Int? = null
+    @field:Min(value = 0, message = "Quantidade de computadores não pode ser negativa")
+    val quantidadeComputadores: Int? = null,
+
+    @field:Size(max = 2000, message = "Descrição deve ter no máximo 2000 caracteres")
+    val descricao: String? = null
 )
 
 data class LaboratorioDTO(
     val id: Long,
     val nome: String,
     val capacidade: Int,
-    val qtdEquipamentos: Int,
+    val quantidadeComputadores: Int,
+    val descricao: String?,
     val status: Boolean
 ) {
     companion object {
@@ -41,7 +48,8 @@ data class LaboratorioDTO(
                 id = laboratorio.id!!,
                 nome = laboratorio.nome,
                 capacidade = laboratorio.capacidade,
-                qtdEquipamentos = laboratorio.qtdEquipamentos,
+                quantidadeComputadores = laboratorio.quantidadeComputadores,
+                descricao = laboratorio.descricao,
                 status = laboratorio.status
             )
         }

@@ -13,21 +13,12 @@ import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 
-/**
- * Controller responsável por receber e devolver requisições relacionadas a planejamentos de aula.
- * Toda a lógica de negócio é delegada ao PlanejamentoService.
- */
 @RestController
 @RequestMapping("/api/planejamentos")
 class PlanejamentoController(
     private val planejamentoService: PlanejamentoService
 ) {
 
-    /**
-     * Cria um novo planejamento de aula
-     * POST /api/planejamentos
-     * Permissão: PROFESSOR, DIRETOR, ADMIN
-     */
     @PostMapping
     @PreAuthorize("hasAnyRole('PROFESSOR', 'DIRETOR', 'ADMIN')")
     fun criarPlanejamento(
@@ -38,13 +29,6 @@ class PlanejamentoController(
         return ResponseEntity.status(HttpStatus.CREATED).body(planejamentoDTO)
     }
 
-    /**
-     * Lista planejamentos baseado no perfil:
-     * - Professor: Planos publicados de todos + todos os seus planos
-     * - Diretor/Admin: Todos os planos
-     * GET /api/planejamentos?status=PUBLICADO
-     * Permissão: Autenticado
-     */
     @GetMapping
     fun listarPlanejamentos(
         @RequestParam(required = false) status: StatusPlanejamento?,
@@ -54,11 +38,6 @@ class PlanejamentoController(
         return ResponseEntity.ok(planejamentos)
     }
 
-    /**
-     * Lista apenas os planejamentos do professor autenticado
-     * GET /api/planejamentos/meus
-     * Permissão: PROFESSOR, DIRETOR, ADMIN
-     */
     @GetMapping("/meus")
     @PreAuthorize("hasAnyRole('PROFESSOR', 'DIRETOR', 'ADMIN')")
     fun listarMeusPlanejamentos(
@@ -68,17 +47,14 @@ class PlanejamentoController(
         return ResponseEntity.ok(planejamentos)
     }
 
-    /**
-     * Busca planejamentos com filtros (palavra-chave, área, author, status)
-     * GET /api/planejamentos/buscar?palavraChave=programacao&area=Computacao
-     * Permissão: Autenticado
-     */
     @GetMapping("/buscar")
     fun buscarComFiltros(
         @RequestParam(required = false) palavraChave: String?,
         @RequestParam(required = false) area: String?,
         @RequestParam(required = false) authorId: Long?,
         @RequestParam(required = false) status: StatusPlanejamento?,
+        @RequestParam(required = false, defaultValue = "false") somenteComCompetenciasComputacao: Boolean,
+        @RequestParam(required = false, defaultValue = "false") somenteComRecursosAcessibilidade: Boolean,
         authentication: Authentication
     ): ResponseEntity<List<PlanejamentoDTO>> {
         val planejamentos = planejamentoService.buscarComFiltros(
@@ -86,42 +62,32 @@ class PlanejamentoController(
             palavraChave = palavraChave,
             area = area,
             authorId = authorId,
-            status = status
+            status = status,
+            somenteComCompetenciasComputacao = somenteComCompetenciasComputacao,
+            somenteComRecursosAcessibilidade = somenteComRecursosAcessibilidade
         )
         return ResponseEntity.ok(planejamentos)
     }
 
-    /**
-     * Lista planejamentos pendentes (para aprovação)
-     * GET /api/planejamentos/pendentes
-     * Permissão: DIRETOR, ADMIN
-     */
+    @GetMapping("/codigo/{codigo}")
+    fun buscarPorCodigo(@PathVariable codigo: String): ResponseEntity<PlanejamentoDTO> {
+        return ResponseEntity.ok(planejamentoService.buscarPorCodigo(codigo))
+    }
+
     @GetMapping("/pendentes")
     @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
     fun listarPlanejamentosPendentes(): ResponseEntity<List<PlanejamentoDTO>> {
-        val planejamentos = planejamentoService.listarPlanejamentosPendentes()
-        return ResponseEntity.ok(planejamentos)
+        return ResponseEntity.ok(planejamentoService.listarPlanejamentosPendentes())
     }
 
-    /**
-     * Busca um planejamento por ID
-     * GET /api/planejamentos/{id}
-     * Permissão: Autenticado
-     */
     @GetMapping("/{id}")
     fun buscarPlanejamento(
         @PathVariable id: Long,
         authentication: Authentication
     ): ResponseEntity<PlanejamentoDTO> {
-        val planejamentoDTO = planejamentoService.buscarPorId(id, authentication.name)
-        return ResponseEntity.ok(planejamentoDTO)
+        return ResponseEntity.ok(planejamentoService.buscarPorId(id, authentication.name))
     }
 
-    /**
-     * Atualiza um planejamento existente
-     * PUT /api/planejamentos/{id}
-     * Permissão: PROFESSOR (apenas autor), DIRETOR, ADMIN
-     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('PROFESSOR', 'DIRETOR', 'ADMIN')")
     fun atualizarPlanejamento(
@@ -129,30 +95,18 @@ class PlanejamentoController(
         @Valid @RequestBody request: UpdatePlanejamentoRequest,
         authentication: Authentication
     ): ResponseEntity<PlanejamentoDTO> {
-        val planejamentoDTO = planejamentoService.atualizarPlanejamento(id, request, authentication.name)
-        return ResponseEntity.ok(planejamentoDTO)
+        return ResponseEntity.ok(planejamentoService.atualizarPlanejamento(id, request, authentication.name))
     }
 
-    /**
-     * Altera o status de um planejamento (aprovar, reprovar, solicitar ajustes)
-     * PATCH /api/planejamentos/{id}/status
-     * Permissão: DIRETOR, ADMIN
-     */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
     fun alterarStatus(
         @PathVariable id: Long,
         @Valid @RequestBody request: AlterarStatusPlanejamentoRequest
     ): ResponseEntity<PlanejamentoDTO> {
-        val planejamentoDTO = planejamentoService.alterarStatus(id, request)
-        return ResponseEntity.ok(planejamentoDTO)
+        return ResponseEntity.ok(planejamentoService.alterarStatus(id, request))
     }
 
-    /**
-     * Deleta um planejamento
-     * DELETE /api/planejamentos/{id}
-     * Permissão: PROFESSOR (apenas autor de planos não publicados), DIRETOR, ADMIN
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('PROFESSOR', 'DIRETOR', 'ADMIN')")
     fun deletarPlanejamento(
@@ -163,11 +117,6 @@ class PlanejamentoController(
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }
 
-    /**
-     * Aprova um planejamento (atalho para alterar status para PUBLICADO)
-     * PATCH /api/planejamentos/{id}/aprovar
-     * Permissão: DIRETOR, ADMIN
-     */
     @PatchMapping("/{id}/aprovar")
     @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
     fun aprovarPlanejamento(@PathVariable id: Long): ResponseEntity<PlanejamentoDTO> {
@@ -175,15 +124,9 @@ class PlanejamentoController(
             status = StatusPlanejamento.PUBLICADO,
             motivo = null
         )
-        val planejamentoDTO = planejamentoService.alterarStatus(id, request)
-        return ResponseEntity.ok(planejamentoDTO)
+        return ResponseEntity.ok(planejamentoService.alterarStatus(id, request))
     }
 
-    /**
-     * Reprova um planejamento com motivo opcional
-     * PATCH /api/planejamentos/{id}/reprovar
-     * Permissão: DIRETOR, ADMIN
-     */
     @PatchMapping("/{id}/reprovar")
     @PreAuthorize("hasAnyRole('DIRETOR', 'ADMIN')")
     fun reprovarPlanejamento(
@@ -195,7 +138,6 @@ class PlanejamentoController(
             status = StatusPlanejamento.REPROVADO,
             motivo = motivo
         )
-        val planejamentoDTO = planejamentoService.alterarStatus(id, request)
-        return ResponseEntity.ok(planejamentoDTO)
+        return ResponseEntity.ok(planejamentoService.alterarStatus(id, request))
     }
 }

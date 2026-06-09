@@ -7,9 +7,11 @@ import br.edu.ufms.schoollab_manager.service.PlanejamentoCodeGenerator
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.boot.CommandLineRunner
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 
 @Component
+@Order(1)
 class DataSeeder(
     private val areaRepository: AreaConhecimentoRepository,
     private val planejamentoRepository: PlanejamentoRepository,

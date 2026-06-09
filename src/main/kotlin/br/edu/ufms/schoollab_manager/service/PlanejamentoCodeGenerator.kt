@@ -16,15 +16,19 @@ class PlanejamentoCodeGenerator(
 
     fun generateUnique(): String {
         repeat(maxAttempts) {
-            val code = buildString(length) {
-                repeat(length) {
-                    append(alphabet[random.nextInt(alphabet.size)])
-                }
-            }
+            val code = randomCode()
             if (!planejamentoRepository.existsByCodigo(code)) {
                 return code
             }
         }
         throw IllegalStateException("Não foi possível gerar um código único após $maxAttempts tentativas")
+    }
+
+    private fun randomCode(): String {
+        val sb = StringBuilder(length)
+        for (i in 0 until length) {
+            sb.append(alphabet[random.nextInt(alphabet.size)])
+        }
+        return sb.toString()
     }
 }
